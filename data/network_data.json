@@ -1,0 +1,75 @@
+{
+  "network_devices": [
+    {
+      "hostname": "core-switch-01",
+      "ip": "192.168.1.1",
+      "type": "Switch",
+      "cpu_usage": 23.5,
+      "memory_usage": 45.2,
+      "uptime": 2592000,
+      "interface_count": 24,
+      "vlans": [100, 200, 300],
+      "status": "online"
+    },
+    {
+      "hostname": "firewall-01",
+      "ip": "192.168.1.254",
+      "type": "Firewall",
+      "cpu_usage": 12.8,
+      "memory_usage": 32.1,
+      "uptime": 1728000,
+      "interface_count": 8,
+      "policies": 15,
+      "status": "online"
+    },
+    {
+      "hostname": "router-wan-01",
+      "ip": "192.168.1.2",
+      "type": "Router",
+      "cpu_usage": 34.7,
+      "memory_usage": 67.3,
+      "uptime": 3456000,
+      "interface_count": 12,
+      "routes": 1024,
+      "status": "online"
+    },
+    {
+      "hostname": "ap-floor1-01",
+      "ip": "192.168.1.100",
+      "type": "Access Point",
+      "cpu_usage": 8.2,
+      "memory_usage": 28.5,
+      "uptime": 864000,
+      "interface_count": 2,
+      "clients": 45,
+      "status": "online"
+    }
+  ],
+  "automation_stats": {
+    "total_devices_managed": 4,
+    "vlans_configured": 3,
+    "security_policies": 15,
+    "backups_performed": 24,
+    "templates_available": 5,
+    "last_discovery": "2024-01-15T14:30:00",
+    "monitoring_interval": 60
+  },
+  "security_metrics": {
+    "blocked_threats": 127,
+    "security_policies_active": 15,
+    "firewall_rules": 48,
+    "intrusion_attempts": 23,
+    "malware_detected": 5,
+    "vulnerability_scans": 12
+  },
+  "network_health": {
+    "devices_up": 4,
+    "devices_warning": 0,
+    "devices_critical": 0,
+    "total_interfaces": 46,
+    "interfaces_up": 44,
+    "high_utilization_interfaces": 2,
+    "average_response_time": 2.3,
+    "packet_loss": 0.02
+  }
+}
