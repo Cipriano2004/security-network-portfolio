@@ -53,6 +53,74 @@ class NetworkScanner:
         except:
             return False
     
+    def scan_device_ports(self, ip):
+        """Scan for open ports on a specific device"""
+        try:
+            open_ports = []
+            common_ports = [21, 22, 23, 25, 53, 80, 110, 135, 139, 143, 443, 993, 995, 1433, 3306, 3389, 5432, 5900, 8080, 9100]
+            
+            for port in common_ports:
+                try:
+                    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                        sock.settimeout(0.3)
+                        result = sock.connect_ex((ip, port))
+                        if result == 0:
+                            service = self.get_service_name(port)
+                            open_ports.append({
+                                'port': port,
+                                'protocol': 'TCP',
+                                'service': service,
+                                'state': 'open'
+                            })
+                except:
+                    continue
+            
+            return open_ports
+        except Exception as e:
+            return []
+
+    def get_service_name(self, port):
+        """Get service name for port number"""
+        services = {
+            21: 'FTP', 22: 'SSH', 23: 'Telnet', 25: 'SMTP', 53: 'DNS',
+            80: 'HTTP', 110: 'POP3', 135: 'RPC', 139: 'NetBIOS', 143: 'IMAP',
+            443: 'HTTPS', 993: 'IMAPS', 995: 'POP3S', 1433: 'MSSQL', 3306: 'MySQL',
+            3389: 'RDP', 5432: 'PostgreSQL', 5900: 'VNC', 8080: 'HTTP-Alt', 9100: 'JetDirect'
+        }
+        return services.get(port, f'Service-{port}')
+    
+    def determine_device_type_from_ports(self, open_ports, last_octet):
+        """Determina o tipo de dispositivo baseado nas portas abertas"""
+        if not open_ports:
+            return "Unknown"
+        
+        port_numbers = [p['port'] for p in open_ports]
+        
+        # Impressoras (normalmente têm porta 9100, 631)
+        if 9100 in port_numbers or 631 in port_numbers:
+            return "Printer"
+        
+        # Servidores web (80, 443)
+        if 80 in port_numbers or 443 in port_numbers:
+            return "Server"
+        
+        # Dispositivos de rede (SSH + SNMP)
+        if 22 in port_numbers and 161 in port_numbers:
+            if 2 <= last_octet <= 19:
+                return "Switch"
+            else:
+                return "Router"
+        
+        # Câmeras IP (554 RTSP)
+        if 554 in port_numbers:
+            return "Camera"
+        
+        # Computadores (RDP, SMB)
+        if 3389 in port_numbers or 445 in port_numbers:
+            return "Computer"
+        
+        return "Unknown"
+    
     def scan_network(self, subnet=None):
         """Escaneia a rede real - TODOS os dispositivos"""
         if subnet is None:
@@ -122,6 +190,9 @@ class NetworkScanner:
         """Identifica tipo de dispositivo com mais precisão"""
         local_ip = self.get_local_ip()
         
+        # Scan de portas para obter dados reais
+        open_ports = self.scan_device_ports(ip)
+        
         # Máquina local
         if ip == local_ip:
             return {
@@ -132,11 +203,13 @@ class NetworkScanner:
                 "cpu": f"{psutil.cpu_percent()}%",
                 "memory": f"{psutil.virtual_memory().percent}%",
                 "uptime": self.get_uptime(),
-                "description": "Máquina local"
+                "description": "Máquina local",
+                "open_ports": open_ports
             }
         
-        # Análise baseada no último octeto
+        # Análise baseada no último octeto e portas abertas
         last_octet = int(ip.split('.')[-1])
+        device_type = self.determine_device_type_from_ports(open_ports, last_octet)
         
         # Gateway (normalmente .1)
         if last_octet == 1:
@@ -148,7 +221,8 @@ class NetworkScanner:
                 "cpu": f"{15 + hash(ip) % 20}%",
                 "memory": f"{30 + hash(ip) % 30}%",
                 "uptime": f"{hash(ip) % 365}d {hash(ip) % 24}h",
-                "description": "Gateway principal da rede"
+                "description": "Gateway principal da rede",
+                "open_ports": open_ports
             }
         
         # Switches (.2-.19)
@@ -156,12 +230,13 @@ class NetworkScanner:
             return {
                 "ip": ip,
                 "name": f"SW-{last_octet:02d}",
-                "type": "Switch",
+                "type": device_type if device_type in ["Switch", "Router"] else "Switch",
                 "status": "online",
                 "cpu": f"{8 + hash(ip) % 15}%",
                 "memory": f"{20 + hash(ip) % 25}%",
                 "uptime": f"{hash(ip) % 500}d {hash(ip) % 24}h",
-                "description": "Switch de rede"
+                "description": "Switch de rede",
+                "open_ports": open_ports
             }
         
         # Servidores (.20-.49)
@@ -186,12 +261,13 @@ class NetworkScanner:
             return {
                 "ip": ip,
                 "name": name,
-                "type": type_name,
+                "type": device_type if device_type == "Server" else type_name,
                 "status": "online",
                 "cpu": f"{20 + hash(ip) % 40}%",
                 "memory": f"{40 + hash(ip) % 45}%",
                 "uptime": f"{hash(ip) % 300}d {hash(ip) % 24}h",
-                "description": description
+                "description": description,
+                "open_ports": open_ports
             }
         
         # Impressoras e IoT (.50-.99)
@@ -206,28 +282,32 @@ class NetworkScanner:
             for range_key, (prefix, type_name, description) in device_types.items():
                 start, end = map(int, range_key.split('-'))
                 if start <= last_octet <= end:
+                    final_type = device_type if device_type in ["Printer", "Camera", "IoT"] else type_name
                     return {
                         "ip": ip,
                         "name": f"{prefix}-{last_octet}",
-                        "type": type_name,
+                        "type": final_type,
                         "status": "online",
                         "cpu": f"{5 + hash(ip) % 15}%",
                         "memory": f"{10 + hash(ip) % 20}%",
                         "uptime": f"{hash(ip) % 100}d {hash(ip) % 24}h",
-                        "description": description
+                        "description": description,
+                        "open_ports": open_ports
                     }
         
         # DHCP Range - Computadores/Dispositivos (.100-.199)
         elif 100 <= last_octet <= 199:
+            final_type = device_type if device_type == "Computer" else "Computer"
             return {
                 "ip": ip,
                 "name": f"PC-{last_octet}",
-                "type": "Computer",
+                "type": final_type,
                 "status": "online",
                 "cpu": f"{10 + hash(ip) % 50}%",
                 "memory": f"{30 + hash(ip) % 50}%",
                 "uptime": f"{hash(ip) % 30}d {hash(ip) % 24}h",
-                "description": "Computador/Dispositivo cliente"
+                "description": "Computador/Dispositivo cliente",
+                "open_ports": open_ports
             }
         
         # Access Points (.200-.249)
@@ -235,12 +315,13 @@ class NetworkScanner:
             return {
                 "ip": ip,
                 "name": f"AP-{last_octet}",
-                "type": "AccessPoint",
+                "type": "Access Point",
                 "status": "online",
                 "cpu": f"{5 + hash(ip) % 20}%",
                 "memory": f"{15 + hash(ip) % 30}%",
                 "uptime": f"{hash(ip) % 180}d {hash(ip) % 24}h",
-                "description": "Access Point WiFi"
+                "description": "Access Point WiFi",
+                "open_ports": open_ports
             }
         
         # Equipamentos de rede (.250-.254)
@@ -254,7 +335,8 @@ class NetworkScanner:
                     "cpu": f"{15 + hash(ip) % 25}%",
                     "memory": f"{35 + hash(ip) % 35}%",
                     "uptime": f"{hash(ip) % 400}d {hash(ip) % 24}h",
-                    "description": "Firewall de perímetro"
+                    "description": "Firewall de perímetro",
+                    "open_ports": open_ports
                 }
             else:
                 return {
@@ -265,7 +347,8 @@ class NetworkScanner:
                     "cpu": f"{10 + hash(ip) % 20}%",
                     "memory": f"{25 + hash(ip) % 25}%",
                     "uptime": f"{hash(ip) % 200}d {hash(ip) % 24}h",
-                    "description": "Equipamento de rede"
+                    "description": "Equipamento de rede",
+                    "open_ports": open_ports
                 }
         
         # Qualquer outro dispositivo
@@ -273,12 +356,13 @@ class NetworkScanner:
             return {
                 "ip": ip,
                 "name": f"DEVICE-{last_octet}",
-                "type": "Unknown",
+                "type": device_type if device_type != "Unknown" else "Unknown",
                 "status": "online",
                 "cpu": f"{hash(ip) % 50}%",
                 "memory": f"{hash(ip) % 80}%",
                 "uptime": f"{hash(ip) % 100}d {hash(ip) % 24}h",
-                "description": "Dispositivo não identificado"
+                "description": "Dispositivo não identificado",
+                "open_ports": open_ports
             }
     
     def get_uptime(self):
