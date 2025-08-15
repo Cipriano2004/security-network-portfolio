@@ -20,18 +20,18 @@
 
 ### 2. 🔗 Conectar Repositório Local
 
-Após criar, o GitHub mostrará comandos. Use estes (substitua SEU-USUARIO):
+Após criar, o GitHub mostrará comandos. Use estes:
 
 ```bash
 cd C:\security-network-portfolio
-git remote add origin https://github.com/SEU-USUARIO/security-network-portfolio.git
+git remote add origin https://github.com/Cipriano2004/security-network-portfolio.git
 git branch -M main
 git push -u origin main
 ```
 
 ### 3. ✅ Verificar Upload
 
-Acesse: `https://github.com/SEU-USUARIO/security-network-portfolio`
+Acesse: `https://github.com/Cipriano2004/security-network-portfolio`
 
 Você deve ver:
 - ✅ README.md otimizado

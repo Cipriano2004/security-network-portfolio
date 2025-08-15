@@ -19,13 +19,13 @@ echo PASSO 2: Conectar repositorio local
 echo ----------------------------------------
 echo Execute os comandos que apareceram na tela do GitHub:
 echo.
-echo git remote add origin https://github.com/SEU-USUARIO/security-network-portfolio.git
+echo git remote add origin https://github.com/Cipriano2004/security-network-portfolio.git
 echo git branch -M main
 echo git push -u origin main
 echo.
 echo OU use estes comandos ja preparados:
 echo.
-git remote add origin https://github.com/SEU-USUARIO/security-network-portfolio.git
+git remote add origin https://github.com/Cipriano2004/security-network-portfolio.git
 git branch -M main
 git push -u origin main
 echo.
@@ -41,6 +41,6 @@ echo ✅ Modal leve e rapido
 echo ✅ Scripts de automacao
 echo ✅ Documentacao completa
 echo.
-echo 🎯 Acesse: https://github.com/SEU-USUARIO/security-network-portfolio
+echo 🎯 Acesse: https://github.com/Cipriano2004/security-network-portfolio
 echo.
 pause
