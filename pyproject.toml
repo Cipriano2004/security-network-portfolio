@@ -1,0 +1,25 @@
+[project]
+name = "netsoc-lab"
+version = "2.0.0"
+description = "Inventário de rede, detecções mapeadas no MITRE ATT&CK e monitoramento de host com detecção de anomalia."
+requires-python = ">=3.11"
+license = { text = "MIT" }
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.coverage.run]
+source = ["netsoc"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "W", "S"]
+ignore = ["S104", "S311", "S603", "S607"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101", "E501"]
+"netsoc/servicos.py" = ["E501"]

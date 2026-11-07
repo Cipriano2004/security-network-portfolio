@@ -1,50 +1,26 @@
 # Python
 __pycache__/
 *.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-pip-wheel-metadata/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-
-# Virtual Environment
+.venv/
 venv/
-env/
-ENV/
+*.egg-info/
+build/
+dist/
 
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
+# Testes e ferramentas
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
 
-# OS
+# Dados locais: resultados de varreduras e telemetria NÃO vão para o GitHub
+dados/
+*.db
+*.sqlite*
+*.jsonl
+
+# Sistema / IDE
 .DS_Store
 Thumbs.db
-
-# Logs
-*.log
-
-# Data files (keep structure, ignore sensitive data)
-data/sensitive/
-data/backups/
-
-# Temporary files
-temp/
-tmp/
-*.tmp
+.vscode/
+.idea/

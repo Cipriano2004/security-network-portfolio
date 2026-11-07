@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-bs-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NetSOC Lab</title>
+  <link rel="icon" href="{{ url_for('static', filename='img/favicon.svg') }}" type="image/svg+xml">
+  <link href="{{ url_for('static', filename='vendor/inter/inter.css') }}" rel="stylesheet">
+  <link href="{{ url_for('static', filename='vendor/bootstrap/bootstrap.min.css') }}" rel="stylesheet">
+  <link href="{{ url_for('static', filename='vendor/bootstrap-icons/bootstrap-icons.min.css') }}" rel="stylesheet">
+  <link href="{{ url_for('static', filename='css/painel.css') }}" rel="stylesheet">
+</head>
+<body data-demo="{{ 'sim' if demo else 'nao' }}">
+  {% if demo %}
+  <div class="faixa-demo" role="status"><i class="bi bi-info-circle me-2"></i><strong>Modo demonstração</strong> · rede de laboratório fictícia 10.10.20.0/24. Os achados são gerados pelas mesmas regras usadas com dados reais.</div>
+  {% endif %}
+
+  <header class="topo">
+    <div class="marca">
+      <span class="logo"><i class="bi bi-shield-shaded"></i></span>
+      <div><strong>NetSOC Lab</strong><small>v{{ versao }}</small></div>
+    </div>
+    <div class="host-chip" id="host-chip"><span class="pulso"></span><span id="host-nome">—</span></div>
+    <form class="form-scan" id="form-scan" autocomplete="off">
+      <label for="alvo" class="visually-hidden">Rede para varrer</label>
+      <div class="input-group">
+        <span class="input-group-text"><i class="bi bi-diagram-3"></i></span>
+        <input class="form-control mono" id="alvo" name="alvo" value="{{ alvo_sugerido }}" placeholder="192.168.0.0/24" {{ 'disabled' if demo }}>
+        <button class="btn btn-primary" type="submit" id="btn-scan" {{ 'disabled' if demo }}><i class="bi bi-radar me-1"></i>Varrer</button>
+      </div>
+      <small class="aviso-etico"><i class="bi bi-exclamation-triangle me-1"></i>Somente redes que você administra · privadas e até /22</small>
+    </form>
+  </header>
+
+  <main class="conteudo">
+    <div id="status-scan" class="status-scan" hidden></div>
+
+    <section class="kpis">
+      <div class="kpi"><span class="icone azul"><i class="bi bi-hdd-network"></i></span>
+        <div><div class="rotulo">Ativos na rede</div><div class="valor" id="kpi-ativos">—</div><div class="extra" id="kpi-ativos-extra">nenhum scan ainda</div></div></div>
+      <div class="kpi"><span class="icone vermelho"><i class="bi bi-door-open"></i></span>
+        <div><div class="rotulo">Serviços de risco expostos</div><div class="valor" id="kpi-risco">—</div><div class="extra">Telnet, SMB, RDP, bancos…</div></div></div>
+      <div class="kpi"><span class="icone ambar"><i class="bi bi-bell"></i></span>
+        <div><div class="rotulo">Achados</div><div class="valor" id="kpi-achados">—</div><div class="extra" id="kpi-achados-extra"></div></div></div>
+      <div class="kpi"><span class="icone verde"><i class="bi bi-cpu"></i></span>
+        <div><div class="rotulo">Modelo de anomalia</div><div class="valor" id="kpi-modelo">—</div><div class="extra" id="kpi-modelo-extra">Isolation Forest</div></div></div>
+    </section>
+
+    <section class="grade-2">
+      <div class="painel">
+        <div class="painel-topo"><h2><i class="bi bi-activity me-2"></i>Telemetria do host</h2><span class="sub">pontos vermelhos = leituras marcadas como anômalas</span></div>
+        <div class="grafico"><canvas id="grafico-host" role="img" aria-label="CPU, memória e conexões externas ao longo do tempo"></canvas></div>
+      </div>
+      <div class="painel">
+        <div class="painel-topo"><h2><i class="bi bi-pie-chart me-2"></i>Achados por severidade</h2></div>
+        <div class="grafico"><canvas id="grafico-severidade" role="img" aria-label="Achados por severidade"></canvas></div>
+      </div>
+    </section>
+
+    <section class="painel">
+      <div class="painel-topo">
+        <h2><i class="bi bi-exclamation-octagon me-2"></i>Achados</h2>
+        <div class="d-flex gap-2 align-items-center">
+          <div class="btn-group btn-group-sm" role="group" aria-label="Filtrar por severidade" id="filtro-sev">
+            <button class="btn btn-outline-secondary active" data-sev="">Todos</button>
+            <button class="btn btn-outline-secondary" data-sev="alto">Alto</button>
+            <button class="btn btn-outline-secondary" data-sev="medio">Médio</button>
+            <button class="btn btn-outline-secondary" data-sev="baixo">Baixo</button>
+          </div>
+          <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('exportar') }}"><i class="bi bi-download me-1"></i>JSONL (SIEM)</a>
+        </div>
+      </div>
+      <div class="table-responsive">
+        <table class="table tabela">
+          <thead><tr><th>Severidade</th><th>Regra</th><th>Achado</th><th>Alvo</th><th>MITRE ATT&amp;CK</th><th>Visto</th></tr></thead>
+          <tbody id="tbody-achados"><tr><td colspan="6" class="vazio">Carregando…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="painel">
+      <div class="painel-topo"><h2><i class="bi bi-hdd-rack me-2"></i>Inventário de rede</h2><span class="sub" id="sub-inventario"></span></div>
+      <div class="table-responsive">
+        <table class="table tabela">
+          <thead><tr><th>IP</th><th>Hostname</th><th>Tipo provável</th><th>Portas abertas</th><th class="text-end">Latência</th></tr></thead>
+          <tbody id="tbody-ativos"><tr><td colspan="5" class="vazio">Nenhum scan ainda. Informe a rede no topo e clique em Varrer.</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    {% if not demo %}
+    <section class="grade-3">
+      <div class="painel"><div class="painel-topo"><h2><i class="bi bi-list-ol me-2"></i>Processos (CPU)</h2></div>
+        <table class="table tabela tabela-sm"><thead><tr><th>Processo</th><th>PID</th><th class="text-end">CPU</th><th class="text-end">Mem</th></tr></thead><tbody id="tbody-proc"></tbody></table></div>
+      <div class="painel"><div class="painel-topo"><h2><i class="bi bi-ear me-2"></i>Portas em escuta</h2></div>
+        <table class="table tabela tabela-sm"><thead><tr><th>Porta</th><th>Endereço</th><th>Processo</th></tr></thead><tbody id="tbody-escuta"></tbody></table></div>
+      <div class="painel"><div class="painel-topo"><h2><i class="bi bi-arrow-left-right me-2"></i>Conexões ativas</h2></div>
+        <div class="rolagem"><table class="table tabela tabela-sm"><thead><tr><th>Processo</th><th>Destino</th></tr></thead><tbody id="tbody-conexoes"></tbody></table></div></div>
+    </section>
+    {% endif %}
+
+    <footer class="rodape">NetSOC Lab · use apenas em redes próprias ou com autorização por escrito · eventos novos são gravados em <code>dados/eventos.jsonl</code></footer>
+  </main>
+
+  <script src="{{ url_for('static', filename='vendor/chartjs/chart.umd.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/painel.js') }}"></script>
+</body>
+</html>

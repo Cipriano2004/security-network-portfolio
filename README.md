@@ -1,468 +1,161 @@
+# NetSOC Lab
 
-# �️ Security & Network Operations Portfolio - OTIMIZADO
+[![CI](https://github.com/Cipriano2004/security-network-portfolio/actions/workflows/ci.yml/badge.svg)](https://github.com/Cipriano2004/security-network-portfolio/actions/workflows/ci.yml)
+![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12-3776AB?logo=python&logoColor=white)
+![MITRE ATT&CK](https://img.shields.io/badge/MITRE-ATT%26CK-red)
+![Licença](https://img.shields.io/badge/licen%C3%A7a-MIT-green)
 
-Portfolio completo de Cybersecurity Analyst Jr & Network Engineering Jr com dados reais e performance otimizada.
+Ferramenta de laboratório para **SOC/NOC**: faz o inventário de uma rede local, aponta serviços de risco expostos, percebe mudanças entre varreduras, monitora o próprio computador e gera alertas mapeados no **MITRE ATT&CK**. Os alertas também saem em **JSON Lines**, prontos para entrar num SIEM como Wazuh ou Splunk.
 
-## 🎯 Destaques
+![Painel](docs/screenshots/painel-demo.png)
 
-✅ **Dashboard SOC/NOC Profissional** - Interface estilo centro de operações  
-✅ **Network Scanner Real** - Descobre 104+ dispositivos da rede  
-✅ **Port Scanning Ativo** - Identifica portas abertas e serviços  
-✅ **Modal Otimizado** - Performance melhorada, carregamento rápido  
-✅ **Dados em Tempo Real** - APIs live, atualizações a cada 5s  
-✅ **Scripts Automatizados** - Automação profissional completa  
+> **Dados reais ou de demonstração?** Com `serve`, o painel mostra a telemetria **real** do computador onde roda e o resultado **real** das varreduras que você fizer. Com `serve --demo`, carrega uma rede de laboratório **fictícia**, marcada com uma faixa amarela no topo. Nos dois modos, os alertas saem das mesmas regras.
 
-## 🚀 Execução Rápida
+## O que ele faz
+
+| Área | Como funciona |
+|---|---|
+| **Descoberta de hosts** | Sondagem TCP em portas comuns: um host é considerado ativo se aceita **ou recusa** a conexão (RST). Funciona mesmo com ping bloqueado e sem privilégios de administrador. |
+| **Varredura de portas** | *TCP connect scan* nas 30 portas do catálogo, com captura de banner (SSH, FTP, SMTP e cabeçalho `Server:` HTTP) e palpite do tipo de dispositivo. |
+| **Inventário com histórico** | Cada scan fica salvo em SQLite; o próximo scan do mesmo alvo é comparado com o anterior. |
+| **Detecções** | 9 regras (abaixo), cada uma ligada a uma técnica do ATT&CK, com severidade, evidência e deduplicação. |
+| **Monitoramento do host** | CPU, memória, conexões, processos e portas em escuta via `psutil`, a cada 5 s. |
+| **Anomalia com ML** | *Isolation Forest* treinado com as amostras **desta máquina** (linha de base). Explica o alerta pelos desvios (σ) de cada métrica. |
+| **Integração com SIEM** | Alertas novos gravados em `dados/eventos.jsonl` (campos inspirados no Elastic Common Schema) e exportáveis pelo painel. |
+
+### Regras de detecção
+
+| Regra | Detecta | Severidade | MITRE ATT&CK |
+|---|---|---|---|
+| NET-001 | Serviço de risco exposto: Telnet, FTP, SMB, RDP, VNC, bancos de dados, Redis, Docker API, RTSP… | médio / alto | T1021.x, T1040, T1210, T1078.001 |
+| NET-002 | Dispositivo novo na rede (não estava no scan anterior) | médio | T1200 Hardware Additions |
+| NET-003 | Porta nova aberta em dispositivo conhecido | médio | T1571 Non-Standard Port |
+| NET-004 | Dispositivo deixou de responder | baixo | — |
+| HOST-001 | Conexão de saída para porta associada a backdoor/C2 (4444, 1337, 31337…) | alto | T1571 Non-Standard Port |
+| HOST-002 | Processo conversando com muitos IPs externos distintos | médio | T1041 Exfiltration Over C2 Channel |
+| HOST-003 | Serviço escutando em todas as interfaces numa porta não padrão | baixo | T1571 Non-Standard Port |
+| HOST-004 | Processo com uso de CPU sustentado acima de 90% | médio | T1496 Resource Hijacking |
+| HOST-005 | Leitura do host fora do padrão aprendido (Isolation Forest) | médio | — |
+
+![Achados com MITRE ATT&CK](docs/screenshots/achados-mitre.png)
+
+### Testado com dados reais
+
+Rodando em modo real, provoquei um pico de CPU de 10 segundos na máquina. O sistema gerou dois alertas sozinho:
+
+- **HOST-004**, apontando o processo e o PID responsáveis.
+- **HOST-005**, do modelo de anomalia, explicando o motivo: *"CPU acima do normal (+61σ)"*.
+
+A varredura de `127.0.0.1` encontrou o MySQL que estava rodando na máquina e gerou o NET-001.
+
+![Modo real](docs/screenshots/modo-real.png)
+
+## Uso responsável
+
+Varrer redes sem autorização pode configurar crime no Brasil (**Lei 12.737/2012**, art. 154-A do Código Penal) e viola termos de uso de provedores. Por isso:
+
+- o NetSOC **recusa alvos públicos** e aceita só redes privadas (RFC 1918), loopback e link-local, até **/22** (1.024 endereços);
+- um alvo público autorizado por escrito exige a opção explícita `--autorizado` na linha de comando e **não pode ser escaneado pelo painel web**;
+- o servidor web escuta **somente em 127.0.0.1**.
+
+Use em casa, no seu homelab ou em redes em que você tenha permissão por escrito.
+
+## Como rodar
+
+Requer Python 3.11+.
 
 ```bash
-# Execute como administrador
-.\scripts\iniciar_portfolio.bat
+git clone https://github.com/Cipriano2004/security-network-portfolio.git
+cd security-network-portfolio
+python -m venv .venv
+.venv\Scripts\activate            # Linux/macOS: source .venv/bin/activate
+pip install -r requirements.txt
 ```
 
-## 🔧 Tecnologias
-
-**Backend:** Python 3.x, psutil, threading, HTTP Server, socket scanning  
-**Frontend:** HTML5/CSS3/JS, Bootstrap 5, Font Awesome, Real-time APIs  
-**Network:** ICMP ping, TCP port scanning, device classification, subnet analysis  
-
-## 📊 Competências Demonstradas
-
-### Cybersecurity Analyst Jr
-- ✅ Network reconnaissance & discovery
-- ✅ Port scanning & service identification  
-- ✅ Security event monitoring
-- ✅ Vulnerability assessment
-- ✅ Real-time threat analysis
-
-### Network Engineering Jr  
-- ✅ Network topology mapping
-- ✅ Device discovery & classification
-- ✅ Infrastructure monitoring
-- ✅ Performance optimization
-- ✅ Automation scripting
-
-## 🔍 Funcionalidades Otimizadas
-
-### Modal de Dispositivos
-- **Performance melhorada** - Carregamento 5x mais rápido
-- **Dados reais** - Portas abertas via port scanning
-- **Interface limpa** - Design otimizado para usabilidade
-
-### Network Scanner
-- **Full subnet scan** - 1-254 IPs
-- **100 threads** - Processamento concorrente
-- **Identificação inteligente** - Classifica por portas abertas
-
-### Dashboard Real-time
-- **104+ dispositivos** descobertos
-- **10 seções funcionais** - Todas com dados reais
-- **APIs REST** - Integração live com servidor
-
-## 📈 Métricas
-
-- **104+ Dispositivos** ativos monitorados
-- **20 Portas comuns** scaneadas por device  
-- **5 segundos** intervalo de atualização
-- **100% funcional** - Sem simulações
-
----
-
-*Portfolio criado para demonstrar competências reais em Cybersecurity e Network Engineering*
-- 🔧 **Network Automation** - Real device configuration management
-
----
-
-## 🚀 **COMO USAR (SUPER SIMPLES)**
-
-### **Opção 1 - Início Automático:**
 ```bash
-# Duplo clique em:
-start.bat
+python -m netsoc serve --demo              # painel com a rede fictícia → http://127.0.0.1:8080
+python -m netsoc serve                     # painel monitorando ESTE computador
+python -m netsoc scan 192.168.0.0/24       # varredura pelo terminal (mostra os achados)
+python -m netsoc scan 192.168.0.0/24 --json
+python -m netsoc host                      # avalia só o computador local
 ```
 
-### **Opção 2 - Manual:**
+No modo real, o modelo de anomalia precisa de cerca de 2,5 minutos (30 leituras) para aprender a linha de base. Para ver o nome do processo dono de cada porta em escuta, execute o terminal como administrador.
+
+### Enviando os alertas para o Wazuh
+
+No agente do Wazuh (`ossec.conf`), aponte para o arquivo de eventos:
+
+```xml
+<localfile>
+  <log_format>json</log_format>
+  <location>C:\caminho\security-network-portfolio\dados\eventos.jsonl</location>
+</localfile>
+```
+
+Cada linha chega com `rule.id`, `event.severity` e `threat.technique.id`, prontos para regras e dashboards no SIEM.
+
+## Arquitetura
+
+```mermaid
+flowchart LR
+    CLI[python -m netsoc] --> M
+    WEB[Painel web<br/>Flask · 127.0.0.1] --> M
+    M[Motor] --> SC[scanner<br/>descoberta + portas + banner]
+    M --> HO[host<br/>psutil]
+    M --> AN[anomalia<br/>Isolation Forest]
+    SC --> DE[deteccoes<br/>regras ATT&CK]
+    HO --> DE
+    AN --> DE
+    DE --> DB[(SQLite)]
+    DE --> J[eventos.jsonl] --> SIEM[Wazuh / Splunk]
+```
+
+```
+netsoc/
+├── alvos.py          # validação e travas do alvo (só redes privadas, até /22)
+├── scanner.py        # descoberta TCP, varredura de portas e banners
+├── servicos.py       # catálogo de portas: risco, motivo e técnica ATT&CK
+├── host.py           # telemetria do computador (psutil)
+├── deteccoes.py      # 9 regras de detecção
+├── anomalia.py       # Isolation Forest + explicação por desvio padrão
+├── armazenamento.py  # SQLite + log JSON Lines
+├── motor.py          # coleta contínua, scans em segundo plano, retreino do modelo
+├── demo.py           # rede de laboratório fictícia (modo demonstração)
+├── __main__.py       # linha de comando
+└── web/              # API JSON e painel (Bootstrap e Chart.js servidos localmente)
+```
+
+**Segurança do próprio painel:** a API só aceita `POST` da mesma origem e com um cabeçalho próprio (proteção contra CSRF vinda de outros sites), envia **CSP** sem script inline nem CDN e insere todo texto vindo da API com `textContent` (sem `innerHTML`), evitando XSS a partir de banners ou hostnames maliciosos na rede.
+
+## Testes
+
 ```bash
-# 1. Iniciar servidor de dados reais
-python data_server.py
-
-# 2. Abrir dashboard (nova aba)
-dashboard/index.html
+pip install -r requirements-dev.txt
+pytest --cov=netsoc
+ruff check .
 ```
 
----
+São 41 testes, incluindo:
 
-## 📊 **O QUE VOCÊ VAI VER**
+- varredura **real** contra um servidor TCP falso aberto em localhost, com leitura de banner SSH;
+- travas de alvo;
+- cada regra de detecção;
+- o modelo de anomalia separando leitura normal de pico;
+- deduplicação e formato do JSONL;
+- proteções da API.
 
-### **Dashboard com Dados Reais:**
-- ✅ Dispositivos encontrados na sua rede (Roteador, Switch, Servidores, etc.)
-- ✅ Métricas do seu sistema (CPU, RAM, Disco) em tempo real
-- ✅ Eventos de segurança reais detectados
-- ✅ Clique nos dispositivos para ver detalhes completos
+O [CI](.github/workflows/ci.yml) roda lint e testes em Python 3.11 e 3.12 no Linux e no Windows.
 
-### **APIs Funcionais:**
-- `http://localhost:8080/` - Dashboard completo
-- `http://localhost:8080/api/devices` - Dispositivos encontrados
-- `http://localhost:8080/api/security` - Eventos de segurança
-- `http://localhost:8080/api/system` - Métricas do sistema
+## Limitações conhecidas
 
----
+- **Portas:** só TCP. Não faz varredura UDP, que exige privilégios elevados.
+- **Tipo de dispositivo:** é um palpite pelas portas abertas, não *fingerprinting* de sistema operacional.
+- **Anomalia:** o modelo aprende o "normal" da própria máquina. Se ela já estiver comprometida durante o aprendizado, esse comportamento vira linha de base.
+- **HOST-002:** navegadores falam legitimamente com muitos destinos. A regra existe para chamar atenção a outros processos, e o limiar é ajustável em `deteccoes.py`.
 
-## 🎯 **DEMONSTRAÇÃO PARA RECRUTADORES**
+## Autor
 
-### **1. Inicie o Sistema:**
-```bash
-start.bat
-```
+**Ariel Cipriano do Nascimento** · [LinkedIn](https://www.linkedin.com/in/ariel-cipriano)
 
-### **2. Mostre o Dashboard:**
-- Interface profissional SOC/NOC
-- Dados reais atualizando em tempo real
-- Topologia de rede com dispositivos reais
-
-### **3. Explique as Funcionalidades:**
-- **Network Discovery:** Encontra dispositivos reais na rede
-- **Security Monitoring:** Detecta eventos em tempo real
-- **System Metrics:** CPU, RAM, Disco da máquina real
-- **Real-time Updates:** Atualização automática a cada 10s
-
-### **4. Demonstre Interatividade:**
-- Clique nos dispositivos para ver detalhes
-- Botão "Atualizar" para novo scan da rede
-- Logs de sistema em tempo real
-
----
-
-## 🛠️ **TECNOLOGIAS REAIS UTILIZADAS**
-
-### **Backend Python:**
-- **psutil** - Métricas reais do sistema
-- **socket** - Network scanning real
-- **subprocess** - Ping real para dispositivos
-- **HTTP Server** - API REST funcional
-- **Threading** - Monitoramento em tempo real
-
-### **Frontend Profissional:**
-- **JavaScript Fetch API** - Consome dados reais
-- **Bootstrap 5** - Interface moderna
-- **Real-time Updates** - Atualização automática
-- **Responsive Design** - Mobile-friendly
-
-### **Network Engineering:**
-- **ICMP Ping** - Teste real de conectividade
-- **IP Network Scanning** - Descoberta de dispositivos
-- **Device Identification** - Classificação por tipo
-- **Network Topology** - Visualização da rede real
-
-### **Cybersecurity:**
-- **Process Monitoring** - Detecta uso alto de CPU
-- **Memory Monitoring** - Alerta uso de RAM
-- **Network Connections** - Monitora conexões externas
-- **Event Logging** - Sistema de logs real
-
----
-
-## 📁 **ESTRUTURA DO PROJETO**
-
-```
-security-network-portfolio/
-├── start.bat                 # ⚡ Início automático
-├── data_server.py            # 🔧 Servidor de dados reais
-├── dashboard/
-│   └── index.html            # 📊 Dashboard profissional
-├── data/
-│   └── *.json               # 💾 Dados persistidos
-└── README.md                # 📖 Esta documentação
-```
-
----
-
-## 🎖️ **COMPETÊNCIAS DEMONSTRADAS**
-
-### **Para Cybersecurity Analyst:**
-✅ **Monitoramento em tempo real** - Detecta eventos reais  
-✅ **Análise de logs** - Sistema de eventos estruturado  
-✅ **Detecção de anomalias** - CPU/RAM alto, conexões suspeitas  
-✅ **Dashboard SOC** - Interface profissional operacional  
-✅ **API Integration** - Consume dados de múltiplas fontes  
-
-### **Para Network Engineer:**
-✅ **Network Discovery** - Escaneia e encontra dispositivos reais  
-✅ **Device Classification** - Router, Switch, Server, etc.  
-✅ **Network Topology** - Visualização da infraestrutura  
-✅ **Real-time Monitoring** - Métricas de performance  
-✅ **Network Troubleshooting** - Ping, conectividade, status  
-
-### **Para Ambas as Posições:**
-✅ **Python Development** - Scripts funcionais e bem estruturados  
-✅ **API Development** - REST APIs com dados reais  
-✅ **Dashboard Development** - Interface moderna e responsiva  
-✅ **Real-time Systems** - Atualização automática de dados  
-✅ **System Integration** - Frontend + Backend + Network  
-
----
-
-## 🔍 **DADOS REAIS DEMONSTRADOS**
-
-### **Network Scan Real:**
-```
-✅ RTR-GATEWAY (192.168.2.1) - Router - Online
-✅ SW-CORE-01 (192.168.2.10) - Switch - Online  
-✅ SRV-WEB-01 (192.168.2.20) - Server - Online
-✅ LOCAL-PC (192.168.2.33) - Computer - Online
-```
-
-### **System Metrics Real:**
-```
-📈 CPU: 15.2% | RAM: 67.8% | Disk: 45.3%
-📈 Uptime: 5d 12h | Network I/O: 2.3GB/1.8GB
-```
-
-### **Security Events Real:**
-```
-[14:30:22] WARNING: High CPU usage detected: chrome.exe (85.3%)
-[14:29:45] INFO: System monitoring active
-[14:28:10] WARNING: High memory usage: 87.2%
-```
-
----
-
-## 🚀 **QUICK START**
-
-1. **Execute:** `start.bat`
-2. **Aguarde:** Sistema inicializa automaticamente  
-3. **Visualize:** Dashboard abre no navegador
-4. **Demonstre:** Portfolio funcionando com dados reais!
-
----
-
-## 🎯 **DIFERENCIAL COMPETITIVO**
-
-❌ **Outros portfolios:** Dados falsos, simulações, não funcionam  
-✅ **Este portfolio:** **DADOS REAIS, SISTEMA FUNCIONANDO, DEMONSTRÁVEL**
-
-- **Recrutador pode ver funcionando** em tempo real
-- **Dados reais** da rede e sistema
-- **Código limpo e profissional**
-- **Documentação completa**
-- **Pronto para produção**
-
----
-
-**🎖️ Portfolio desenvolvido para impressionar recrutadores técnicos e demonstrar competências reais em SOC/NOC Operations!**
-
-*Sistema testado e funcionando - pronto para apresentação profissional*
-
-### 🎯 Competências Demonstradas
-
-#### 🔒 Cybersecurity Analysis
-- **Machine Learning para Detecção de Ameaças**
-  - Isolation Forest (94.2% precisão)
-  - Random Forest (96.8% precisão) 
-  - DBSCAN Clustering
-- **Security Information and Event Management (SIEM)**
-- **Incident Response Automatizado**
-- **Análise de Vulnerabilidades**
-- **Threat Intelligence**
-- **Monitoramento de Segurança em Tempo Real**
-
-#### 🌐 Network Engineering
-- **Descoberta Automática de Rede**
-- **Monitoramento SNMP**
-- **Automação de VLAN**
-- **Gerenciamento de Políticas de Firewall**
-- **Backup Automático de Configurações**
-- **Análise de Performance de Rede**
-
-#### ⚙️ Automação e Ferramentas
-- **Python Network Automation**
-- **RESTful API Development**
-- **Database Management (SQLite)**
-- **Configuration Template Management**
-- **Real-time Dashboard (HTML/CSS/JavaScript)**
-
-### 🚀 Como Executar
-
-#### Requisitos
-```bash
-pip install pandas numpy scikit-learn
-```
-
-#### Demonstração Completa
-```bash
-python demo.py
-```
-
-#### Componentes Individuais
-
-**Dashboard SOC/NOC:**
-```bash
-# Abrir dashboard/index.html no navegador
-```
-
-**Análise de Segurança com ML:**
-```bash
-python threat-detection/ml_security_analysis.py
-```
-
-**Automação de Rede:**
-```bash
-python network-automation/network_automation.py
-```
-
-**Operações SOC/NOC:**
-```bash
-python backend/soc_noc_operations.py
-```
-
-### 📁 Estrutura do Projeto
-
-```
-security-network-portfolio/
-├── README.md                          # Documentação principal
-├── demo.py                           # Script de demonstração
-├── dashboard/
-│   └── index.html                    # Dashboard SOC/NOC
-├── threat-detection/
-│   └── ml_security_analysis.py       # ML para detecção de ameaças
-├── network-automation/
-│   └── network_automation.py         # Automação de rede
-├── backend/
-│   └── soc_noc_operations.py         # Operações SOC/NOC
-└── data/
-    ├── network_data.json             # Dados de rede
-    └── dashboard_data.json           # Dados do dashboard
-```
-
-### 🎯 Cenários de Uso
-
-#### 1. Analista de Segurança Junior
-- Monitoramento de logs de segurança
-- Detecção de anomalias com ML
-- Resposta a incidentes
-- Análise de malware
-- Correlação de eventos
-
-#### 2. Engenheiro de Redes Junior
-- Configuração automática de dispositivos
-- Monitoramento de performance
-- Troubleshooting de conectividade
-- Implementação de VLANs
-- Backup de configurações
-
-#### 3. Operador SOC/NOC
-- Dashboard de monitoramento 24/7
-- Alertas automatizados
-- Escalação de incidentes
-- Relatórios de compliance
-- Análise de tendências
-
-### 📊 Métricas e KPIs
-
-#### Segurança
-- Ameaças Bloqueadas: 127
-- Malware Detectado: 5
-- Tentativas de Intrusão: 23
-- Score de Segurança: 92.5%
-
-#### Rede
-- Dispositivos Monitorados: 15
-- Interfaces Ativas: 48
-- Utilização de Bandwidth: 67.3%
-- Uptime da Rede: 99.97%
-
-#### Automação
-- Tarefas Automatizadas: 24
-- Configurações Implementadas: 12
-- Backups Completados: 48
-- Eficiência de Automação: 95.2%
-
-### 🛠️ Tecnologias Utilizadas
-
-#### Backend
-- **Python 3.8+**
-- **scikit-learn** - Machine Learning
-- **pandas/numpy** - Análise de dados
-- **SQLite** - Database
-- **socket/subprocess** - Network operations
-
-#### Frontend
-- **HTML5/CSS3/JavaScript**
-- **Bootstrap 5.1.3**
-- **Font Awesome 6.4.0**
-- **Chart.js** - Visualizações
-
-#### Protocolos e Padrões
-- **SNMP** - Network monitoring
-- **TCP/IP** - Network communications
-- **HTTP/HTTPS** - Web services
-- **JSON** - Data exchange
-- **REST API** - Service integration
-
-### 🎖️ Diferenciais Competitivos
-
-#### Para Cybersecurity Analyst
-✅ Machine Learning aplicado à segurança  
-✅ Experiência prática com SIEM  
-✅ Automação de resposta a incidentes  
-✅ Análise de logs e correlação de eventos  
-✅ Threat hunting e intelligence  
-
-#### Para Network Engineer
-✅ Automação de configurações de rede  
-✅ Monitoramento proativo com SNMP  
-✅ Gerenciamento de VLANs e políticas  
-✅ Backup automático e versionamento  
-✅ Troubleshooting automatizado  
-
-#### Para Ambas as Posições
-✅ Visão integrada SOC/NOC  
-✅ Dashboard operacional profissional  
-✅ Scripts Python personalizáveis  
-✅ Documentação técnica completa  
-✅ Portfolio demonstrável em tempo real  
-
-### 📞 Contato
-
-Este portfolio foi desenvolvido para demonstrar competências técnicas reais aplicáveis em posições de:
-- **Cybersecurity Analyst Junior**
-- **Network Engineer Junior** 
-- **SOC Analyst**
-- **NOC Technician**
-
-**Características Técnicas:**
-- Código limpo e documentado
-- Arquitetura modular e escalável
-- Testes automatizados
-- Monitoramento em tempo real
-- Integração entre componentes
-
----
-
-## 🚀 Quick Start
-
-1. **Clone o projeto:**
-   ```bash
-   cd C:\
-   git clone [repository] security-network-portfolio
-   cd security-network-portfolio
-   ```
-
-2. **Instale dependências:**
-   ```bash
-   pip install pandas numpy scikit-learn
-   ```
-
-3. **Execute a demonstração:**
-   ```bash
-   python demo.py
-   ```
-
-4. **Abra o dashboard:**
-   ```
-   dashboard/index.html
-   ```
-
-**Portfolio pronto para apresentação a recrutadores e gerentes técnicos!**
-
----
-*Desenvolvido para demonstrar competências reais em Cybersecurity e Network Engineering*
+Projeto relacionado: [Gestão de Ofícios](https://github.com/Cipriano2004/gestao-oficios), sistema web com trilha de auditoria e controles OWASP.
