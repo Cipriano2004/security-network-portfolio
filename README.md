@@ -158,4 +158,4 @@ O [CI](.github/workflows/ci.yml) roda lint e testes em Python 3.11 e 3.12 no Lin
 
 **Ariel Cipriano do Nascimento** · [LinkedIn](https://www.linkedin.com/in/ariel-cipriano)
 
-Projeto relacionado: [Gestão de Ofícios](https://github.com/Cipriano2004/gestao-oficios), sistema web com trilha de auditoria e controles OWASP.
+Outro projeto: [Gestão de Ofícios](https://github.com/Cipriano2004/gestao-oficios), um sistema web com trilha de auditoria e controles OWASP.
